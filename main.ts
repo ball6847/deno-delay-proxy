@@ -225,10 +225,10 @@ Deno.serve(async (req: Request) => {
 			});
 		}
 
-		const enabled = enabledResult.getOrNull() as boolean;
-		const status = statusResult.getOrNull() as number;
-		const headers = headersResult.getOrNull() as Record<string, string>;
-		const bodyText = bodyTextResult.getOrNull() as string;
+		const enabled = enabledResult.getOrNull();
+		const status = statusResult.getOrNull();
+		const headers = headersResult.getOrNull();
+		const bodyText = bodyTextResult.getOrNull();
 
 		killSwitchState = {
 			enabled: enabled ?? killSwitchState.enabled,
@@ -297,15 +297,14 @@ Deno.serve(async (req: Request) => {
 			});
 		}
 
-		const delay = delayResult.getOrNull() as number;
-		delayMs = delay;
+		const delay = delayResult.getOrNull() ?? delayMs;
 
-		const saveResult = await saveDelayState(delayMs);
+		const saveResult = await saveDelayState(delay);
 		saveResult.fold(
 			() => {
 				logJson("info", {
 					event: "delay-updated",
-					delayMs,
+					delay,
 				});
 			},
 			(e: Error) => {
@@ -316,7 +315,7 @@ Deno.serve(async (req: Request) => {
 			},
 		);
 
-		return new Response(JSON.stringify({ success: true, delay: delayMs }), {
+		return new Response(JSON.stringify({ success: true, delay }), {
 			status: 200,
 			headers: { "content-type": "application/json" },
 		});
