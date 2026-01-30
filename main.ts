@@ -1,5 +1,5 @@
 import { Result } from "typescript-result";
-import { DEFAULT_KILL_SWITCH_STATE, DelayEntity, DelaySchema, KillSwitchEntity, KillSwitchSchema, type KillSwitchState } from "./src/state/index.ts";
+import { DEFAULT_KILL_SWITCH, DelayRepository, DelaySchema, KillSwitchRepository, KillSwitchSchema, type KillSwitchData } from "./src/repository/index.ts";
 
 const UPSTREAM = Deno.env.get("UPSTREAM");
 
@@ -11,24 +11,24 @@ if (!UPSTREAM) {
 // Deno KV for persistent state
 const kv = await Deno.openKv();
 
-// Dependency injection - inject KV into entities
-const killSwitchEntity = new KillSwitchEntity(kv);
-const delayEntity = new DelayEntity(kv);
+// Dependency injection - inject KV into repositories
+const killSwitchRepository = new KillSwitchRepository(kv);
+const delayRepository = new DelayRepository(kv);
 
-let killSwitchState: KillSwitchState = DEFAULT_KILL_SWITCH_STATE;
+let killSwitchData: KillSwitchData = DEFAULT_KILL_SWITCH;
 
 // Load initial state
 const [killSwitchResult, delayResult] = await Promise.all([
-	killSwitchEntity.load(),
-	delayEntity.load(parseInt(Deno.env.get("DELAY") || "0", 10)),
+	killSwitchRepository.load(),
+	delayRepository.load(parseInt(Deno.env.get("DELAY") || "0", 10)),
 ]);
 
 killSwitchResult.fold(
-	(state: KillSwitchState) => {
-		killSwitchState = state;
+	(state: KillSwitchData) => {
+		killSwitchData = state;
 	},
 	() => {
-		killSwitchState = DEFAULT_KILL_SWITCH_STATE;
+		killSwitchData = DEFAULT_KILL_SWITCH;
 	},
 );
 
@@ -118,20 +118,20 @@ Deno.serve(async (req: Request) => {
 
 		const { enabled, status, headers, body: bodyText } = validationResult.data;
 
-		killSwitchState = {
-			enabled: enabled ?? killSwitchState.enabled,
-			status: status ?? killSwitchState.status,
-			headers: headers ?? killSwitchState.headers,
-			body: bodyText ?? killSwitchState.body,
+		killSwitchData = {
+			enabled: enabled ?? killSwitchData.enabled,
+			status: status ?? killSwitchData.status,
+			headers: headers ?? killSwitchData.headers,
+			body: bodyText ?? killSwitchData.body,
 		};
 
-		const saveResult = await killSwitchEntity.save(killSwitchState);
+		const saveResult = await killSwitchRepository.save(killSwitchData);
 		saveResult.fold(
 			() => {
 				logJson("info", {
 					event: "kill-switch-updated",
-					enabled: killSwitchState.enabled,
-					status: killSwitchState.status,
+					enabled: killSwitchData.enabled,
+					status: killSwitchData.status,
 				});
 			},
 			(e: Error) => {
@@ -142,14 +142,14 @@ Deno.serve(async (req: Request) => {
 			},
 		);
 
-		return new Response(JSON.stringify({ success: true, state: killSwitchState }), {
+		return new Response(JSON.stringify({ success: true, state: killSwitchData }), {
 			status: 200,
 			headers: { "content-type": "application/json" },
 		});
 	}
 
 	if (url.pathname === "/api/kill-switch" && req.method === "GET") {
-		return new Response(JSON.stringify(killSwitchState), {
+		return new Response(JSON.stringify(killSwitchData), {
 			status: 200,
 			headers: { "content-type": "application/json" },
 		});
@@ -192,7 +192,7 @@ Deno.serve(async (req: Request) => {
 
 		delayMs = delay;
 
-		const saveResult = await delayEntity.save(delay);
+		const saveResult = await delayRepository.save(delay);
 		saveResult.fold(
 			() => {
 				logJson("info", {
@@ -238,18 +238,18 @@ Deno.serve(async (req: Request) => {
 	const startTime = Date.now();
 
 	// Apply delay if kill-switch is not enabled
-	if (!killSwitchState.enabled) {
+	if (!killSwitchData.enabled) {
 		await new Promise((resolve) => setTimeout(resolve, delayMs));
 	}
 
 	// Check kill-switch after delay
-	if (killSwitchState.enabled) {
+	if (killSwitchData.enabled) {
 		const durationMs = Date.now() - startTime;
-		logResponse(targetUrl, killSwitchState.status, durationMs, true);
+		logResponse(targetUrl, killSwitchData.status, durationMs, true);
 
-		return new Response(killSwitchState.body, {
-			status: killSwitchState.status,
-			headers: killSwitchState.headers,
+		return new Response(killSwitchData.body, {
+			status: killSwitchData.status,
+			headers: killSwitchData.headers,
 		});
 	}
 

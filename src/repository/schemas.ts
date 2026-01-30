@@ -1,12 +1,12 @@
 /**
- * State management types for the delay proxy application.
+ * Data schemas for the delay proxy application.
  */
 import { z } from "zod";
 
 /**
- * Kill-switch configuration state persisted in Deno KV.
+ * Kill-switch configuration data persisted in Deno KV.
  */
-export type KillSwitchState = {
+export type KillSwitchData = {
 	enabled: boolean;
 	status: number;
 	headers: Record<string, string>;
@@ -14,9 +14,9 @@ export type KillSwitchState = {
 };
 
 /**
- * Default kill-switch state used when no persisted state exists.
+ * Default kill-switch values used when no persisted data exists.
  */
-export const DEFAULT_KILL_SWITCH_STATE: KillSwitchState = {
+export const DEFAULT_KILL_SWITCH: KillSwitchData = {
 	enabled: false,
 	status: 200,
 	headers: { "content-type": "application/json" },

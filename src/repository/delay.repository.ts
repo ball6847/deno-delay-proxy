@@ -1,15 +1,17 @@
 /**
- * Delay state management with Deno KV persistence.
+ * Delay repository for Deno KV persistence.
  */
 import { Result } from "typescript-result";
 
 const DELAY_KEY = ["delay"];
 
-export class DelayEntity {
+export class DelayRepository {
 	constructor(private readonly kv: Deno.Kv) {}
 
 	async load(defaultDelay: number): Promise<Result<number, Error>> {
-		const entryResult = await Result.try(() => this.kv.get<number>(DELAY_KEY));
+		const entryResult = await Result.try(() =>
+			this.kv.get<number>(DELAY_KEY)
+		);
 
 		if (entryResult.error) {
 			return Result.error(entryResult.error);
