@@ -7,11 +7,10 @@ if (!UPSTREAM) {
 }
 
 // TODO: make proxy work at /proxy/:path paths (so we have slot for adding features)
-// TODO: add /api/kill-switch/ endpoint to quickly manage proxy kill switch (force status, headers and response body)
-// TODO: add /api/delay/ endpoint to manage proxy delay
-// TODO: add github action to Deno Deploy (might not need to pre configured at our end, could be done seamlessly at Deno Deploy)
+// TODO: add /api/kill-switch/ endpoint to quickly manage proxy kill switch (force status, headers and response body, globally apply to all request) simple as POST /api/kill-switch with { enabled: boolean, status: number, headers: Record<string, string>, body: string }
+// TODO: add /api/delay/ endpoint to manage proxy delay (simple as POST /api/delay with { delay: number })
 // TODO: add json structured logging for request / response (need to find a good json logging library / try `pino` if it compatible with deno)
-// TODO: use Deno KV as datasource (use on-cloud option at Deno Deploy free plan)
+// TODO: use Deno KV as datasource (use on-cloud option at Deno Deploy free plan, https://docs.deno.com/deploy/reference/deno_kv/)
 // TODO: keep everything in this file main.ts to keep it simple
 
 console.log(`Starting proxy server`);
