@@ -1,5 +1,5 @@
 import { Result } from "typescript-result";
-import { z } from "zod";
+import { DEFAULT_KILL_SWITCH_STATE, DelaySchema, KillSwitchSchema, type KillSwitchState, loadDelayState, loadKillSwitchState, saveDelayState, saveKillSwitchState } from "./src/state/index.ts";
 
 const UPSTREAM = Deno.env.get("UPSTREAM");
 
@@ -8,78 +8,33 @@ if (!UPSTREAM) {
 	Deno.exit(1);
 }
 
-// Deno KV for persistent state
-const kv = await Deno.openKv();
+let killSwitchState: KillSwitchState = DEFAULT_KILL_SWITCH_STATE;
 
-// Kill-switch state (persisted in KV)
-type KillSwitchState = {
-	enabled: boolean;
-	status: number;
-	headers: Record<string, string>;
-	body: string;
-};
+// Load initial state
+const [killSwitchResult, delayResult] = await Promise.all([
+	loadKillSwitchState(),
+	loadDelayState(parseInt(Deno.env.get("DELAY") || "0", 10)),
+]);
 
-const KILL_SWITCH_KEY = ["kill-switch"];
+killSwitchResult.fold(
+	(state: KillSwitchState) => {
+		killSwitchState = state;
+	},
+	() => {
+		killSwitchState = DEFAULT_KILL_SWITCH_STATE;
+	},
+);
 
-// Default kill-switch state
-const defaultKillSwitchState: KillSwitchState = {
-	enabled: false,
-	status: 200,
-	headers: { "content-type": "application/json" },
-	body: '{"message": "blocked by kill-switch"}',
-};
+let delayMs: number = 0;
 
-let killSwitchState: KillSwitchState = defaultKillSwitchState;
-
-// Load kill-switch state from KV on startup
-async function loadKillSwitchState(): Promise<Result<KillSwitchState, Error>> {
-	const entryResult = await Result.try(() => kv.get<KillSwitchState>(KILL_SWITCH_KEY));
-
-	if (entryResult.error) {
-		return Result.error(entryResult.error);
-	}
-
-	return Result.ok(entryResult.value?.value ?? defaultKillSwitchState);
-}
-
-// Save kill-switch state to KV
-async function saveKillSwitchState(state: KillSwitchState): Promise<Result<void, Error>> {
-	const result = await Result.try(() => kv.set(KILL_SWITCH_KEY, state));
-
-	if (result.error) {
-		return Result.error(result.error);
-	}
-
-	return Result.ok(undefined);
-}
-
-// Delay state (persisted in KV)
-const DELAY_KEY = ["delay"];
-
-// Default delay from environment
-let delayMs: number = parseInt(Deno.env.get("DELAY") || "0", 10);
-
-// Load delay state from KV on startup
-async function loadDelayState(): Promise<Result<number, Error>> {
-	const entryResult = await Result.try(() => kv.get<number>(DELAY_KEY));
-
-	if (entryResult.error) {
-		return Result.error(entryResult.error);
-	}
-
-	return Result.ok(entryResult.value?.value ?? delayMs);
-}
-
-// Save delay state to KV
-async function saveDelayState(delay: number): Promise<Result<void, Error>> {
-	const result = await Result.try(() => kv.set(DELAY_KEY, delay));
-
-	if (result.error) {
-		return Result.error(result.error);
-	}
-
-	return Result.ok(undefined);
-}
+delayResult.fold(
+	(delay: number) => {
+		delayMs = delay;
+	},
+	() => {
+		// keep default delayMs
+	},
+);
 
 // JSON structured logger
 function logJson(level: string, data: Record<string, unknown>): void {
@@ -112,42 +67,6 @@ function logResponse(targetUrl: URL, status: number, durationMs: number, killed:
 		killed,
 	});
 }
-
-// Zod schemas for request validation
-const KillSwitchSchema = z.object({
-	enabled: z.boolean().optional(),
-	status: z.number().optional(),
-	headers: z.record(z.string()).optional(),
-	body: z.string().optional(),
-});
-
-const DelaySchema = z.object({
-	delay: z.number().min(0).optional(),
-});
-
-// Load initial state
-const [killSwitchResult, delayResult] = await Promise.all([
-	loadKillSwitchState(),
-	loadDelayState(),
-]);
-
-killSwitchResult.fold(
-	(state: KillSwitchState) => {
-		killSwitchState = state;
-	},
-	() => {
-		killSwitchState = defaultKillSwitchState;
-	},
-);
-
-delayResult.fold(
-	(delay: number) => {
-		delayMs = delay;
-	},
-	() => {
-		// keep default delayMs
-	},
-);
 
 console.log(`Starting proxy server`);
 console.log(`Upstream: ${UPSTREAM}`);
@@ -263,6 +182,8 @@ Deno.serve(async (req: Request) => {
 		}
 
 		const delay = validationResult.data.delay ?? delayMs;
+
+		delayMs = delay;
 
 		const saveResult = await saveDelayState(delay);
 		saveResult.fold(
