@@ -1,5 +1,5 @@
 import { Result } from "typescript-result";
-import { DEFAULT_KILL_SWITCH_STATE, DelaySchema, KillSwitchSchema, type KillSwitchState, loadDelayState, loadKillSwitchState, saveDelayState, saveKillSwitchState } from "./src/state/index.ts";
+import { DEFAULT_KILL_SWITCH_STATE, DelayEntity, DelaySchema, KillSwitchEntity, KillSwitchSchema, type KillSwitchState } from "./src/state/index.ts";
 
 const UPSTREAM = Deno.env.get("UPSTREAM");
 
@@ -8,12 +8,19 @@ if (!UPSTREAM) {
 	Deno.exit(1);
 }
 
+// Deno KV for persistent state
+const kv = await Deno.openKv();
+
+// Dependency injection - inject KV into entities
+const killSwitchEntity = new KillSwitchEntity(kv);
+const delayEntity = new DelayEntity(kv);
+
 let killSwitchState: KillSwitchState = DEFAULT_KILL_SWITCH_STATE;
 
 // Load initial state
 const [killSwitchResult, delayResult] = await Promise.all([
-	loadKillSwitchState(),
-	loadDelayState(parseInt(Deno.env.get("DELAY") || "0", 10)),
+	killSwitchEntity.load(),
+	delayEntity.load(parseInt(Deno.env.get("DELAY") || "0", 10)),
 ]);
 
 killSwitchResult.fold(
@@ -118,7 +125,7 @@ Deno.serve(async (req: Request) => {
 			body: bodyText ?? killSwitchState.body,
 		};
 
-		const saveResult = await saveKillSwitchState(killSwitchState);
+		const saveResult = await killSwitchEntity.save(killSwitchState);
 		saveResult.fold(
 			() => {
 				logJson("info", {
@@ -185,7 +192,7 @@ Deno.serve(async (req: Request) => {
 
 		delayMs = delay;
 
-		const saveResult = await saveDelayState(delay);
+		const saveResult = await delayEntity.save(delay);
 		saveResult.fold(
 			() => {
 				logJson("info", {
