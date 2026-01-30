@@ -5,11 +5,6 @@ import { KillSwitchRepository } from "./src/repository/kill-switch.ts";
 
 const UPSTREAM = Deno.env.get("UPSTREAM");
 
-if (!UPSTREAM) {
-	console.error("UPSTREAM environment variable is required");
-	Deno.exit(1);
-}
-
 // Deno KV for persistent state
 const kv = await Deno.openKv();
 

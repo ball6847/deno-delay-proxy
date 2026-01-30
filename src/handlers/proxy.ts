@@ -7,7 +7,7 @@ import type { KillSwitchRepository } from "../repository/kill-switch.ts";
 
 export class ProxyHandler {
 	constructor(
-		private readonly upstream: string,
+		private readonly upstream: string | undefined,
 		private readonly killSwitchRepository: KillSwitchRepository,
 		private readonly delayRepository: DelayRepository,
 		private readonly logger: Logger,
@@ -25,6 +25,14 @@ export class ProxyHandler {
 	}
 
 	private async handleProxy(req: Request, url: URL): Promise<Response> {
+		// Check if upstream is configured
+		if (!this.upstream) {
+			return new Response(JSON.stringify({ error: "Internal server error: UPSTREAM not configured" }), {
+				status: 500,
+				headers: { "content-type": "application/json" },
+			});
+		}
+
 		const [killSwitchResult, delayResult] = await Promise.all([
 			this.killSwitchRepository.load(),
 			this.delayRepository.load(0),
