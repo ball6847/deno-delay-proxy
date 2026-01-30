@@ -42,7 +42,11 @@ const proxyHandler = new ProxyHandler(
 );
 const notFoundHandler = new NotFoundHandler();
 
-Deno.serve(async (req: Request) => {
+/**
+ * Pure handler function - takes Request, returns Response.
+ * This function is testable by passing Request objects and asserting Response.
+ */
+export async function handleRequest(req: Request): Promise<Response> {
 	const url = new URL(req.url);
 
 	// Try kill-switch handler
@@ -65,4 +69,7 @@ Deno.serve(async (req: Request) => {
 
 	// Return 404 for unmatched routes
 	return notFoundHandler.handle(req, url);
-});
+}
+
+// Deno.serve is just a thin wrapper around our pure handler function
+Deno.serve((req: Request) => handleRequest(req));
