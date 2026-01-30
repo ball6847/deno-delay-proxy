@@ -33,25 +33,24 @@ let killSwitchState: KillSwitchState = defaultKillSwitchState;
 
 // Load kill-switch state from KV on startup
 async function loadKillSwitchState(): Promise<Result<KillSwitchState, Error>> {
-	try {
-		const res = await kv.get<KillSwitchState>(KILL_SWITCH_KEY);
-		if (res.value) {
-			return Result.ok(res.value);
-		}
-		return Result.ok(defaultKillSwitchState);
-	} catch (e) {
-		return Result.error(e as Error);
+	const entryResult = await Result.try(() => kv.get<KillSwitchState>(KILL_SWITCH_KEY));
+
+	if (entryResult.error) {
+		return Result.error(entryResult.error);
 	}
+
+	return Result.ok(entryResult.value?.value ?? defaultKillSwitchState);
 }
 
 // Save kill-switch state to KV
 async function saveKillSwitchState(state: KillSwitchState): Promise<Result<void, Error>> {
-	try {
-		await kv.set(KILL_SWITCH_KEY, state);
-		return Result.ok(undefined);
-	} catch (e) {
-		return Result.error(e as Error);
+	const result = await Result.try(() => kv.set(KILL_SWITCH_KEY, state));
+
+	if (result.error) {
+		return Result.error(result.error);
 	}
+
+	return Result.ok(undefined);
 }
 
 // Delay state (persisted in KV)
@@ -62,25 +61,24 @@ let delayMs: number = parseInt(Deno.env.get("DELAY") || "0", 10);
 
 // Load delay state from KV on startup
 async function loadDelayState(): Promise<Result<number, Error>> {
-	try {
-		const res = await kv.get<number>(DELAY_KEY);
-		if (res.value !== null && res.value !== undefined) {
-			return Result.ok(res.value);
-		}
-		return Result.ok(delayMs);
-	} catch (e) {
-		return Result.error(e as Error);
+	const entryResult = await Result.try(() => kv.get<number>(DELAY_KEY));
+
+	if (entryResult.error) {
+		return Result.error(entryResult.error);
 	}
+
+	return Result.ok(entryResult.value?.value ?? delayMs);
 }
 
 // Save delay state to KV
 async function saveDelayState(delay: number): Promise<Result<void, Error>> {
-	try {
-		await kv.set(DELAY_KEY, delay);
-		return Result.ok(undefined);
-	} catch (e) {
-		return Result.error(e as Error);
+	const result = await Result.try(() => kv.set(DELAY_KEY, delay));
+
+	if (result.error) {
+		return Result.error(result.error);
 	}
+
+	return Result.ok(undefined);
 }
 
 // JSON structured logger
