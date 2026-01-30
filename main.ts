@@ -1,4 +1,5 @@
 import { Result } from "typescript-result";
+import { z } from "zod";
 
 const UPSTREAM = Deno.env.get("UPSTREAM");
 
@@ -114,13 +115,17 @@ function logResponse(targetUrl: URL, status: number, durationMs: number, killed:
 	});
 }
 
-// Safe value extraction helper
-function safeExtract<T>(value: unknown, errorMessage: string, predicate: (value: unknown) => value is T): Result<T, string> {
-	if (predicate(value)) {
-		return { isOk: () => true, isError: () => false, value: value } as Result<T, string>;
-	}
-	return { isOk: () => false, isError: () => true, error: errorMessage } as Result<T, string>;
-}
+// Zod schemas for request validation
+const KillSwitchSchema = z.object({
+	enabled: z.boolean().optional(),
+	status: z.number().optional(),
+	headers: z.record(z.string()).optional(),
+	body: z.string().optional(),
+});
+
+const DelaySchema = z.object({
+	delay: z.number().min(0).optional(),
+});
 
 // Load initial state
 const [killSwitchResult, delayResult] = await Promise.all([
@@ -171,64 +176,23 @@ Deno.serve(async (req: Request) => {
 
 		const bodyObj = body as Record<string, unknown>;
 
-		// Use safeExtract for type-safe field extraction
-		const enabledResult = safeExtract<boolean>(
-			bodyObj.enabled,
-			"enabled must be a boolean",
-			(v): v is boolean => typeof v === "boolean",
-		);
+		// Use Zod for type-safe field validation
+		const validationResult = KillSwitchSchema.safeParse(bodyObj);
 
-		const statusResult = safeExtract<number>(
-			bodyObj.status,
-			"status must be a number",
-			(v): v is number => typeof v === "number",
-		);
-
-		const headersResult = safeExtract<Record<string, string>>(
-			bodyObj.headers,
-			"headers must be a record of strings",
-			(v): v is Record<string, string> => {
-				if (typeof v !== "object" || v === null) return false;
-				return Object.values(v).every((val) => typeof val === "string");
-			},
-		);
-
-		const bodyTextResult = safeExtract<string>(
-			bodyObj.body,
-			"body must be a string",
-			(v): v is string => typeof v === "string",
-		);
-
-		// Check if all results are OK
-		if (enabledResult.error) {
-			return new Response(JSON.stringify({ error: enabledResult.error }), {
-				status: 400,
-				headers: { "content-type": "application/json" },
-			});
-		}
-		if (statusResult.error) {
-			return new Response(JSON.stringify({ error: statusResult.error }), {
-				status: 400,
-				headers: { "content-type": "application/json" },
-			});
-		}
-		if (headersResult.error) {
-			return new Response(JSON.stringify({ error: headersResult.error }), {
-				status: 400,
-				headers: { "content-type": "application/json" },
-			});
-		}
-		if (bodyTextResult.error) {
-			return new Response(JSON.stringify({ error: bodyTextResult.error }), {
-				status: 400,
-				headers: { "content-type": "application/json" },
-			});
+		if (!validationResult.success) {
+			return new Response(
+				JSON.stringify({
+					error: "Invalid request body",
+					details: validationResult.error.errors,
+				}),
+				{
+					status: 400,
+					headers: { "content-type": "application/json" },
+				},
+			);
 		}
 
-		const enabled = enabledResult.getOrNull();
-		const status = statusResult.getOrNull();
-		const headers = headersResult.getOrNull();
-		const bodyText = bodyTextResult.getOrNull();
+		const { enabled, status, headers, body: bodyText } = validationResult.data;
 
 		killSwitchState = {
 			enabled: enabled ?? killSwitchState.enabled,
@@ -284,20 +248,23 @@ Deno.serve(async (req: Request) => {
 
 		const bodyObj = body as Record<string, unknown>;
 
-		const delayResult = safeExtract<number>(
-			bodyObj.delay,
-			"delay must be a non-negative number",
-			(v): v is number => typeof v === "number" && v >= 0,
-		);
+		// Use Zod for type-safe field validation
+		const validationResult = DelaySchema.safeParse(bodyObj);
 
-		if (delayResult.error) {
-			return new Response(JSON.stringify({ error: delayResult.error }), {
-				status: 400,
-				headers: { "content-type": "application/json" },
-			});
+		if (!validationResult.success) {
+			return new Response(
+				JSON.stringify({
+					error: "Invalid request body",
+					details: validationResult.error.errors,
+				}),
+				{
+					status: 400,
+					headers: { "content-type": "application/json" },
+				},
+			);
 		}
 
-		const delay = delayResult.getOrNull() ?? delayMs;
+		const delay = validationResult.data.delay ?? delayMs;
 
 		const saveResult = await saveDelayState(delay);
 		saveResult.fold(
