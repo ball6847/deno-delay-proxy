@@ -104,12 +104,7 @@ function logRequest(req: Request, targetUrl: URL): void {
 }
 
 // Response logger
-function logResponse(
-	targetUrl: URL,
-	status: number,
-	durationMs: number,
-	killed: boolean,
-): void {
+function logResponse(targetUrl: URL, status: number, durationMs: number, killed: boolean): void {
 	logJson("info", {
 		event: "response",
 		targetUrl: targetUrl.toString(),
@@ -120,11 +115,7 @@ function logResponse(
 }
 
 // Safe value extraction helper
-function safeExtract<T>(
-	value: unknown,
-	errorMessage: string,
-	predicate: (value: unknown) => value is T,
-): Result<T, string> {
+function safeExtract<T>(value: unknown, errorMessage: string, predicate: (value: unknown) => value is T): Result<T, string> {
 	if (predicate(value)) {
 		return { isOk: () => true, isError: () => false, value: value } as Result<T, string>;
 	}
