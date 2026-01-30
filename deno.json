@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "exports": "./main.ts",
   "tasks": {
+    "dev": "deno run --allow-env --allow-read --allow-net --unstable-kv --watch main.ts",
     "check": "deno check **/*.ts",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",

@@ -1,0 +1,295 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Delay Proxy API",
+    "description": "A proxy server with configurable delay and kill-switch capabilities",
+    "version": "0.0.1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000"
+    }
+  ],
+  "paths": {
+    "/api/delay": {
+      "get": {
+        "summary": "Get current delay value",
+        "description": "Returns the current configured delay in milliseconds",
+        "operationId": "getDelay",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DelayResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to load delay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Update delay value",
+        "description": "Sets a new delay value in milliseconds",
+        "operationId": "updateDelay",
+        "requestBody": {
+          "description": "Delay configuration",
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DelayRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delay updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DelaySuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to save delay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kill-switch": {
+      "get": {
+        "summary": "Get current kill-switch state",
+        "description": "Returns the current kill-switch configuration including enabled status, response status code, headers, and body",
+        "operationId": "getKillSwitch",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KillSwitchState"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to load state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Update kill-switch state",
+        "description": "Updates the kill-switch configuration to enable/disable the proxy and customize the response",
+        "operationId": "updateKillSwitch",
+        "requestBody": {
+          "description": "Kill-switch configuration",
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KillSwitchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Kill-switch updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KillSwitchSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to save state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DelayResponse": {
+        "type": "object",
+        "properties": {
+          "delay": {
+            "type": "number",
+            "description": "Current delay in milliseconds"
+          }
+        },
+        "required": ["delay"]
+      },
+      "DelayRequest": {
+        "type": "object",
+        "properties": {
+          "delay": {
+            "type": "number",
+            "minimum": 0,
+            "description": "New delay value in milliseconds"
+          }
+        }
+      },
+      "DelaySuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "delay": {
+            "type": "number",
+            "description": "Current delay in milliseconds"
+          }
+        },
+        "required": ["success", "delay"]
+      },
+      "KillSwitchState": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the kill-switch is enabled"
+          },
+          "status": {
+            "type": "number",
+            "description": "HTTP status code to return when kill-switch is active"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Custom headers to include in the response"
+          },
+          "body": {
+            "type": "string",
+            "description": "Response body to return when kill-switch is active"
+          }
+        },
+        "required": ["enabled", "status", "headers", "body"]
+      },
+      "KillSwitchRequest": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Enable or disable the kill-switch"
+          },
+          "status": {
+            "type": "number",
+            "minimum": 100,
+            "maximum": 599,
+            "description": "HTTP status code to return"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Custom response headers"
+          },
+          "body": {
+            "type": "string",
+            "description": "Response body content"
+          }
+        }
+      },
+      "KillSwitchSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/KillSwitchState"
+          }
+        },
+        "required": ["success", "state"]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          }
+        },
+        "required": ["error"]
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "Invalid request body"
+          },
+          "details": {
+            "type": "array",
+            "description": "Validation error details"
+          }
+        },
+        "required": ["error", "details"]
+      }
+    }
+  }
+}

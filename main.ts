@@ -1,4 +1,4 @@
-import { DelayHandler, KillSwitchHandler, NotFoundHandler, ProxyHandler } from "./src/handlers/index.ts";
+import { DelayHandler, KillSwitchHandler, NotFoundHandler, ProxyHandler, SwaggerHandler, SwaggerUiHandler } from "./src/handlers/index.ts";
 import { logger } from "./src/logger.ts";
 import { DelayRepository } from "./src/repository/delay.ts";
 import { KillSwitchRepository } from "./src/repository/kill-switch.ts";
@@ -36,6 +36,8 @@ const proxyHandler = new ProxyHandler(
 	logger,
 );
 const notFoundHandler = new NotFoundHandler();
+const swaggerHandler = new SwaggerHandler();
+const swaggerUiHandler = new SwaggerUiHandler();
 
 /**
  * Pure handler function - takes Request, returns Response.
@@ -43,6 +45,18 @@ const notFoundHandler = new NotFoundHandler();
  */
 export async function handleRequest(req: Request): Promise<Response> {
 	const url = new URL(req.url);
+
+	// Try Swagger JSON handler
+	const swaggerResponse = await swaggerHandler.handle(req, url);
+	if (swaggerResponse) {
+		return swaggerResponse;
+	}
+
+	// Try Swagger UI handler
+	const swaggerUiResponse = await swaggerUiHandler.handle(req, url);
+	if (swaggerUiResponse) {
+		return swaggerUiResponse;
+	}
 
 	// Try kill-switch handler
 	const killSwitchResponse = await killSwitchHandler.handle(req, url);
@@ -66,5 +80,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 	return notFoundHandler.handle(req, url);
 }
 
+const PORT = Number(Deno.env.get("PORT")) || 8000;
+
 // Deno.serve is just a thin wrapper around our pure handler function
-Deno.serve((req: Request) => handleRequest(req));
+Deno.serve({port: PORT}, (req: Request) => handleRequest(req));
