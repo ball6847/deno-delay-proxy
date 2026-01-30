@@ -1,8 +1,53 @@
 {
+  "name": "@ball6847/deno-delay-proxy",
+  "version": "0.0.1",
+  "exports": "./main.ts",
   "tasks": {
-    "dev": "deno run --watch main.ts"
+    "check": "deno check **/*.ts",
+    "fmt": "deno fmt",
+    "fmt:check": "deno fmt --check",
+    "lint": "deno lint",
+    "build": "deno bundle --platform=deno main.ts -o build/cli.js",
+    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --config deno.json --name workspace-manager ./build/cli.js"
   },
   "imports": {
-    "@std/assert": "jsr:@std/assert@1"
-  }
+    "@std/dotenv": "jsr:@std/dotenv@^0.225.5",
+    "typescript-result": "npm:typescript-result@^3.5.1",
+    "zod": "npm:zod@^3.25.67"
+  },
+  "fmt": {
+    "exclude": [
+      "node_modules",
+      "dist",
+      "build"
+    ],
+    "include": [
+      "**/*.ts"
+    ],
+    "indentWidth": 4,
+    "lineWidth": 200,
+    "proseWrap": "preserve",
+    "singleQuote": false,
+    "useTabs": true
+  },
+  "lint": {
+    "exclude": [
+      "node_modules",
+      "dist",
+      "build",
+      "generated"
+    ],
+    "include": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx"
+    ],
+    "rules": {
+      "tags": [
+        "recommended"
+      ]
+    }
+  },
+  "nodeModulesDir": "auto"
 }
