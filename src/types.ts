@@ -3,7 +3,7 @@
  */
 
 /**
- * Kill-switch configuration data persisted in Deno KV.
+ * Kill-switch configuration persisted in Deno KV.
  */
 export type KillSwitch = {
 	enabled: boolean;

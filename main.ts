@@ -1,6 +1,9 @@
 import { Result } from "typescript-result";
-import { DEFAULT_KILL_SWITCH, DelayRepository, type KillSwitch, KillSwitchRepository } from "./src/repository/index.ts";
-import { DelayDto, KillSwitchDto } from "./src/dto/index.ts";
+import { DEFAULT_KILL_SWITCH, type KillSwitch } from "./src/types.ts";
+import { KillSwitchRepository } from "./src/repository/kill-switch.ts";
+import { DelayRepository } from "./src/repository/delay.ts";
+import { KillSwitchDto } from "./src/dto/kill-switch.ts";
+import { DelayDto } from "./src/dto/delay.ts";
 
 const UPSTREAM = Deno.env.get("UPSTREAM");
 

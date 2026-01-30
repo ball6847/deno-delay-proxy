@@ -2,8 +2,8 @@
  * Kill-switch repository for Deno KV persistence.
  */
 import { Result } from "typescript-result";
-import type { KillSwitch } from "./schemas.ts";
-import { DEFAULT_KILL_SWITCH } from "./schemas.ts";
+import type { KillSwitch } from "../types.ts";
+import { DEFAULT_KILL_SWITCH } from "../types.ts";
 
 const KILL_SWITCH_KEY = ["kill-switch"];
 
