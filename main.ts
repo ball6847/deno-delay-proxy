@@ -1,5 +1,6 @@
 import { Result } from "typescript-result";
-import { DEFAULT_KILL_SWITCH, DelayRepository, DelaySchema, KillSwitchRepository, KillSwitchSchema, type KillSwitchData } from "./src/repository/index.ts";
+import { DEFAULT_KILL_SWITCH, DelayRepository, type KillSwitch, KillSwitchRepository } from "./src/repository/index.ts";
+import { DelayDto, KillSwitchDto } from "./src/dto/index.ts";
 
 const UPSTREAM = Deno.env.get("UPSTREAM");
 
@@ -15,7 +16,7 @@ const kv = await Deno.openKv();
 const killSwitchRepository = new KillSwitchRepository(kv);
 const delayRepository = new DelayRepository(kv);
 
-let killSwitchData: KillSwitchData = DEFAULT_KILL_SWITCH;
+let killSwitchData: KillSwitch = DEFAULT_KILL_SWITCH;
 
 // Load initial state
 const [killSwitchResult, delayResult] = await Promise.all([
@@ -24,7 +25,7 @@ const [killSwitchResult, delayResult] = await Promise.all([
 ]);
 
 killSwitchResult.fold(
-	(state: KillSwitchData) => {
+	(state: KillSwitch) => {
 		killSwitchData = state;
 	},
 	() => {
@@ -101,7 +102,7 @@ Deno.serve(async (req: Request) => {
 		const bodyObj = body as Record<string, unknown>;
 
 		// Use Zod for type-safe field validation
-		const validationResult = KillSwitchSchema.safeParse(bodyObj);
+		const validationResult = KillSwitchDto.safeParse(bodyObj);
 
 		if (!validationResult.success) {
 			return new Response(
@@ -173,7 +174,7 @@ Deno.serve(async (req: Request) => {
 		const bodyObj = body as Record<string, unknown>;
 
 		// Use Zod for type-safe field validation
-		const validationResult = DelaySchema.safeParse(bodyObj);
+		const validationResult = DelayDto.safeParse(bodyObj);
 
 		if (!validationResult.success) {
 			return new Response(
