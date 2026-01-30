@@ -4,6 +4,7 @@ import { KillSwitchRepository } from "./src/repository/kill-switch.ts";
 import { DelayRepository } from "./src/repository/delay.ts";
 import { KillSwitchDto } from "./src/dto/kill-switch.ts";
 import { DelayDto } from "./src/dto/delay.ts";
+import { logger } from "./src/logger.ts";
 
 const UPSTREAM = Deno.env.get("UPSTREAM");
 
@@ -46,38 +47,6 @@ delayResult.fold(
 		// keep default delayMs
 	},
 );
-
-// JSON structured logger
-function logJson(level: string, data: Record<string, unknown>): void {
-	const logEntry = {
-		timestamp: new Date().toISOString(),
-		level,
-		...data,
-	};
-	console.log(JSON.stringify(logEntry));
-}
-
-// Request logger
-function logRequest(req: Request, targetUrl: URL): void {
-	logJson("info", {
-		event: "request",
-		method: req.method,
-		url: req.url,
-		targetUrl: targetUrl.toString(),
-		userAgent: req.headers.get("user-agent") || "unknown",
-	});
-}
-
-// Response logger
-function logResponse(targetUrl: URL, status: number, durationMs: number, killed: boolean): void {
-	logJson("info", {
-		event: "response",
-		targetUrl: targetUrl.toString(),
-		status,
-		durationMs,
-		killed,
-	});
-}
 
 console.log(`Starting proxy server`);
 console.log(`Upstream: ${UPSTREAM}`);
@@ -132,14 +101,14 @@ Deno.serve(async (req: Request) => {
 		const saveResult = await killSwitchRepository.save(killSwitchData);
 		saveResult.fold(
 			() => {
-				logJson("info", {
+				logger.log("info", {
 					event: "kill-switch-updated",
 					enabled: killSwitchData.enabled,
 					status: killSwitchData.status,
 				});
 			},
 			(e: Error) => {
-				logJson("error", {
+				logger.log("error", {
 					event: "kill-switch-save-failed",
 					error: e.message,
 				});
@@ -199,13 +168,13 @@ Deno.serve(async (req: Request) => {
 		const saveResult = await delayRepository.save(delay);
 		saveResult.fold(
 			() => {
-				logJson("info", {
+				logger.log("info", {
 					event: "delay-updated",
 					delay,
 				});
 			},
 			(e: Error) => {
-				logJson("error", {
+				logger.log("error", {
 					event: "delay-save-failed",
 					error: e.message,
 				});
@@ -237,7 +206,7 @@ Deno.serve(async (req: Request) => {
 	const targetPath = url.pathname.replace(/^\/proxy/, "");
 	const targetUrl = new URL(targetPath + url.search, UPSTREAM);
 
-	logRequest(req, targetUrl);
+	logger.request(req, targetUrl);
 
 	const startTime = Date.now();
 
@@ -249,7 +218,7 @@ Deno.serve(async (req: Request) => {
 	// Check kill-switch after delay
 	if (killSwitchData.enabled) {
 		const durationMs = Date.now() - startTime;
-		logResponse(targetUrl, killSwitchData.status, durationMs, true);
+		logger.response(targetUrl, killSwitchData.status, durationMs, true);
 
 		return new Response(killSwitchData.body, {
 			status: killSwitchData.status,
@@ -264,7 +233,7 @@ Deno.serve(async (req: Request) => {
 	});
 
 	const durationMs = Date.now() - startTime;
-	logResponse(targetUrl, response.status, durationMs, false);
+	logger.response(targetUrl, response.status, durationMs, false);
 
 	return new Response(response.body, {
 		status: response.status,
